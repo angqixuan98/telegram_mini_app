@@ -1,47 +1,3 @@
-import { useEffect, useState } from "react";
-
-const API_URL = import.meta.env.VITE_API_URL;
-
-export default function App() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetchCommission();
-  }, []);
-
-  async function fetchCommission() {
-    try {
-      const telegramId = 72142613732;
-
-      const res = await fetch(`${API_URL}/api/calculateUserCommissionReport`, {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          code: import.meta.env.VITE_COM_CODE,
-          telegramId: telegramId,
-        },
-        body: JSON.stringify({}), // optional body
-      });
-      const json = await res.json();
-
-      if (!json.success) throw new Error(json.message);
-
-      setData(json.data);
-    } catch (err) {
-      setError(err.message || "Failed to load");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  if (loading) return <Loading />;
-  if (error) return <Error text={error} />;
-
-  return <CommissionUI data={data} />;
-}
-
 function CommissionUI({ data }) {
   const { summary } = data;
 
@@ -102,35 +58,6 @@ function CommissionUI({ data }) {
             <p className="text-xl font-bold">25%</p>
             <span className="text-xs text-green-400">Tier 2</span>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Loading() {
-  return (
-    <div className="min-h-screen bg-[#1f2128] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#2a2d36] rounded-lg p-4 space-y-4 animate-pulse">
-        {/* Header */}
-        <div className="h-5 w-1/2 bg-gray-600 rounded" />
-
-        {/* Rows */}
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="flex justify-between">
-            <div className="h-4 w-1/3 bg-gray-600 rounded" />
-            <div className="h-4 w-1/4 bg-gray-500 rounded" />
-          </div>
-        ))}
-
-        {/* Divider */}
-        <div className="h-px bg-gray-600 my-2" />
-
-        {/* Tier cards */}
-        <div className="flex gap-2">
-          {[1, 2].map((i) => (
-            <div key={i} className="flex-1 h-24 bg-[#1f2128] rounded" />
-          ))}
         </div>
       </div>
     </div>
