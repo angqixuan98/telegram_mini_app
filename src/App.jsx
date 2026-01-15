@@ -117,14 +117,28 @@ function LeftSummary({ summary, user }) {
 
       <div>
         <p className="text-xs text-gray-400 mb-2">COMMISSION RATE</p>
-        <div className="grid grid-cols-2 gap-2">
-          <TierBox title="CURRENT" percent={summary.percentage} tier="Tier 1" />
-          <TierBox
-            title="NEXT"
-            percent={summary.nextPercentage}
-            tier="Tier 2"
-          />
-        </div>
+        {summary.nextPercentage ? (
+          <div className="grid grid-cols-2 gap-2">
+            <TierBox
+              title="CURRENT"
+              percent={summary.percentage}
+              tier="Tier 1"
+            />
+            <TierBox
+              title="NEXT"
+              percent={summary.nextPercentage}
+              tier="Tier 2"
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-2">
+            <TierBox
+              title="CURRENT"
+              percent={summary.percentage}
+              tier="Tier 1"
+            />
+          </div>
+        )}
       </div>
       <div className="bg-[#2f313c] rounded-xl p-4">
         <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">
