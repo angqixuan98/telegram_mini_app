@@ -240,9 +240,10 @@ function DownlineList({ downlines }) {
             key={i}
             className="rounded-lg bg-[#1b1d24] p-3 border border-white/5"
           >
-            <p className="font-semibold mb-1">{d.username}</p>
+            <p className="font-semibold mb-1">{d.name}</p>
             <MiniRow label="Deposit" value={d.deposit} />
             <MiniRow label="Withdraw" value={d.withdraw} />
+            <MiniRow label="FOC" value={d.foc} />
             <MiniRow label="Win/Loss" value={d.winlose} />
           </div>
         ))}
