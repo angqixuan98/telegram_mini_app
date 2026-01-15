@@ -244,7 +244,7 @@ function DownlineList({ downlines }) {
             <MiniRow label="Deposit" value={d.deposit} />
             <MiniRow label="Withdraw" value={d.withdraw} />
             <MiniRow label="FOC" value={d.foc} />
-            <MiniRow label="Win/Loss" value={d.winlose} />
+            <MiniRow label="Win/Loss" value={d.winLose} />
           </div>
         ))}
       </div>
@@ -267,7 +267,7 @@ function DownlineList({ downlines }) {
               <td className="text-center">RM {fmt(d.deposit)}</td>
               <td className="text-center">RM {fmt(d.withdraw)}</td>
               <td className="text-center">RM {fmt(d.foc)}</td>
-              <td className="text-center">RM {fmt(d.winlose)}</td>
+              <td className="text-center">RM {fmt(d.winLose)}</td>
             </tr>
           ))}
         </tbody>
