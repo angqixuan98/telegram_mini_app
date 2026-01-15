@@ -291,6 +291,29 @@ function TierBox({ title, percent, tier }) {
   );
 }
 
+function Empty({ message = "No data available" }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+      {/* Optional icon */}
+      <svg
+        className="w-12 h-12 mb-4 text-gray-500"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M9 17v-6h6v6m2 4H7a2 2 0 01-2-2V7a2 2 0 012-2h5l5 5v9a2 2 0 01-2 2z"
+        />
+      </svg>
+      <p className="text-sm">{message}</p>
+    </div>
+  );
+}
+
 function Loading() {
   return (
     <div className="min-h-[100dvh] w-full bg-[#111218]">
