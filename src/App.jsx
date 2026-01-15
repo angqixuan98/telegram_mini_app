@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const safe = (v) => Number(v) || 0;
 const fmt = (v) => safe(v).toFixed(2);
 
 export default function App() {
+  const params = new URLSearchParams(window.location.search);
+  const uuid = params.get("token");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -20,15 +22,13 @@ export default function App() {
     try {
       setLoading(true);
 
-      const telegramId = 72142613732;
-
       const res = await fetch(
-        `${API_URL}/api/calculateUserCommissionReport?month=${month}`,
+        `${API_URL}/api/getUserCommissionReport/${month}`,
         {
           headers: {
             Accept: "application/json",
             code: import.meta.env.VITE_COM_CODE,
-            telegramId,
+            uuid: uuid,
           },
         }
       );
@@ -51,12 +51,12 @@ export default function App() {
 }
 
 function CommissionUI({ data, month, setMonth }) {
-  const { summary, downlines = [] } = data;
+  const { summary, downlines = [], user } = data;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1b1d24] to-[#111218] text-white p-3 sm:p-4">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-        <LeftSummary summary={summary} />
+      <div className=" mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+        <LeftSummary summary={summary} user={user} />
         <RightPanel
           summary={summary}
           downlines={downlines}
@@ -68,7 +68,7 @@ function CommissionUI({ data, month, setMonth }) {
   );
 }
 
-function LeftSummary({ summary }) {
+function LeftSummary({ summary, user }) {
   return (
     <div className="rounded-xl bg-[#262833]/80 backdrop-blur border border-white/5 shadow-lg p-4 space-y-3">
       <div className="flex items-center gap-3 border-b border-white/10 pb-3">
@@ -76,8 +76,8 @@ function LeftSummary({ summary }) {
           👤
         </div>
         <div>
-          <p className="font-semibold">MM114590</p>
-          <p className="text-xs text-gray-400">+601****1323</p>
+          <p className="font-semibold">{user?.name}</p>
+          <p className="text-xs text-gray-400">+{user?.phone}</p>
         </div>
       </div>
 
@@ -103,23 +103,84 @@ function LeftSummary({ summary }) {
       />
       <SummaryRow label="BROUGHT FORWARD WL" value={summary.carryForward} />
 
-      <div className="border-t border-white/10 pt-3">
-        <SummaryRow
-          label="THIS MONTH EARNING"
-          value={summary.thisMonthEarning}
-        />
-        <SummaryRow
-          label="TOTAL EARNING"
-          value={safe(summary.thisMonthEarning) + safe(summary.carryForward)}
-          color="text-cyan-400"
-        />
-      </div>
+      <div className="border-t border-white/10 pt-3"></div>
+      <SummaryRow label="THIS MONTH EARNING" value={summary.userProfit} />
+      <SummaryRow
+        label="BROUGHT FORWARD COMM"
+        value={summary.previousForwardComission}
+      />
+      <SummaryRow
+        label="TOTAL EARNING"
+        value={summary.totalEarn}
+        color="text-cyan-400"
+      />
 
       <div>
         <p className="text-xs text-gray-400 mb-2">COMMISSION RATE</p>
         <div className="grid grid-cols-2 gap-2">
           <TierBox title="CURRENT" percent={summary.percentage} tier="Tier 1" />
-          <TierBox title="NEXT" percent={25} tier="Tier 2" />
+          <TierBox
+            title="NEXT"
+            percent={summary.nextPercentage}
+            tier="Tier 2"
+          />
+        </div>
+      </div>
+      <div className="bg-[#2f313c] rounded-xl p-4">
+        <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">
+          Downline Totals
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          {/* Invited */}
+          <div className="bg-[#3a3d4a] rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400">Invited</p>
+              <p className="text-2xl font-semibold text-white">
+                {summary.downlinesInvite ?? 0}
+              </p>
+            </div>
+
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m4-4a4 4 0 100-8 4 4 0 000 8zm6 4a3 3 0 100-6 3 3 0 000 6z"
+              />
+            </svg>
+          </div>
+
+          {/* Active */}
+          <div className="bg-[#3a3d4a] rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400">Active</p>
+              <p className="text-2xl font-semibold text-white">
+                {summary.downlinesActive ?? 0}
+              </p>
+            </div>
+
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-6 h-6 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4s-3 1.567-3 3.5S10.343 11 12 11zm0 2c-2.67 0-8 1.337-8 4v1h16v-1c0-2.663-5.33-4-8-4z"
+              />
+            </svg>
+          </div>
         </div>
       </div>
     </div>
@@ -131,12 +192,7 @@ function RightPanel({ summary, downlines, month, setMonth }) {
     <div className="md:col-span-2 rounded-xl bg-[#262833]/80 backdrop-blur border border-white/5 shadow-lg p-4">
       {/* FILTER */}
       <div className="sticky top-0 z-10 bg-[#262833]/90 backdrop-blur rounded-lg mb-4 p-3 flex flex-col sm:flex-row gap-2">
-        <input
-          type="month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          className="bg-[#1b1d24] px-3 py-2 rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-teal-400"
-        />
+        <MonthPicker month={month} setMonth={setMonth} />
         <button
           onClick={() => setMonth(new Date().toISOString().slice(0, 7))}
           className="bg-gradient-to-r from-teal-400 to-cyan-500 text-black px-4 py-2 rounded-lg font-semibold shadow"
@@ -185,15 +241,17 @@ function DownlineList({ downlines }) {
             <th className="text-left py-2">User</th>
             <th>Deposit</th>
             <th>Withdraw</th>
+            <th>FOC</th>
             <th>Win/Loss</th>
           </tr>
         </thead>
         <tbody>
           {downlines.map((d, i) => (
             <tr key={i} className="border-b border-white/5">
-              <td className="py-2">{d.username}</td>
+              <td className="py-2">{d.name}</td>
               <td className="text-center">RM {fmt(d.deposit)}</td>
               <td className="text-center">RM {fmt(d.withdraw)}</td>
+              <td className="text-center">RM {fmt(d.foc)}</td>
               <td className="text-center">RM {fmt(d.winlose)}</td>
             </tr>
           ))}
@@ -235,22 +293,22 @@ function TierBox({ title, percent, tier }) {
 
 function Loading() {
   return (
-    <div className="min-h-screen bg-[#111218] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#262833] rounded-xl p-4 space-y-4 animate-pulse">
-        <div className="h-5 w-1/2 bg-gray-700 rounded" />
+    <div className="min-h-[100dvh] w-full bg-[#111218]">
+      <div className="w-full bg-[#262833] rounded-xl p-4 space-y-4 animate-pulse">
+        <div className="h-8 w-1/2 bg-gray-700 rounded" />
 
         {[...Array(6)].map((_, i) => (
           <div key={i} className="flex justify-between">
-            <div className="h-4 w-1/3 bg-gray-700 rounded" />
-            <div className="h-4 w-1/4 bg-gray-600 rounded" />
+            <div className="h-10 w-1/3 bg-gray-700 rounded" />
+            <div className="h-10 w-1/4 bg-gray-600 rounded" />
           </div>
         ))}
 
         <div className="h-px bg-gray-700 my-2" />
 
         <div className="flex gap-2">
-          <div className="flex-1 h-20 bg-[#1b1d24] rounded" />
-          <div className="flex-1 h-20 bg-[#1b1d24] rounded" />
+          <div className="flex-1 h-60 bg-[#1b1d24] rounded" />
+          <div className="flex-1 h-60 bg-[#1b1d24] rounded" />
         </div>
       </div>
     </div>
@@ -260,6 +318,45 @@ function ErrorMessage({ text }) {
   return (
     <div className="min-h-screen bg-[#111218] flex items-center justify-center">
       <div className="bg-red-600 text-white px-4 py-2 rounded-lg">{text}</div>
+    </div>
+  );
+}
+
+function MonthPicker({ month, setMonth }) {
+  const inputRef = useRef(null);
+
+  return (
+    <div
+      className="relative cursor-pointer"
+      onClick={() =>
+        inputRef.current?.showPicker?.() || inputRef.current?.click()
+      }
+    >
+      <input
+        ref={inputRef}
+        type="month"
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
+        className="bg-[#1b1d24] text-white px-3 py-2 pr-10 rounded-lg border border-white/10
+                   focus:outline-none focus:ring-2 focus:ring-teal-400
+                   appearance-none w-full cursor-pointer"
+      />
+
+      {/* White calendar icon */}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white pointer-events-none"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+        />
+      </svg>
     </div>
   );
 }
