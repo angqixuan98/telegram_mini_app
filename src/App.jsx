@@ -10,27 +10,34 @@ export default function App() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [month, setMonth] = useState(
-    new Date().toISOString().slice(0, 7) // YYYY-MM
-  );
+  const [week, setWeek] = useState(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const diff =
+      now -
+      start +
+      (start.getTimezoneOffset() - now.getTimezoneOffset()) * 60000;
+    const weekNum = Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
+    return `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+  });
 
   useEffect(() => {
     fetchCommission();
-  }, [month]);
+  }, [week]);
 
   async function fetchCommission() {
     try {
       setLoading(true);
 
       const res = await fetch(
-        `${API_URL}/api/getUserCommissionReport/${month}`,
+        `${API_URL}/api/getUserCommissionReport/${week}`,
         {
           headers: {
             Accept: "application/json",
             code: import.meta.env.VITE_COM_CODE,
             uuid: uuid,
           },
-        }
+        },
       );
 
       const json = await res.json();
@@ -47,10 +54,10 @@ export default function App() {
   if (loading) return <Loading />;
   if (error) return <ErrorMessage text={error} />;
 
-  return <CommissionUI data={data} month={month} setMonth={setMonth} />;
+  return <CommissionUI data={data} week={week} setWeek={setWeek} />;
 }
 
-function CommissionUI({ data, month, setMonth }) {
+function CommissionUI({ data, week, setWeek }) {
   const { summary, downlines = [], user } = data;
 
   return (
@@ -60,8 +67,8 @@ function CommissionUI({ data, month, setMonth }) {
         <RightPanel
           summary={summary}
           downlines={downlines}
-          month={month}
-          setMonth={setMonth}
+          week={week}
+          setWeek={setWeek}
         />
       </div>
     </div>
@@ -104,7 +111,7 @@ function LeftSummary({ summary, user }) {
       <SummaryRow label="BROUGHT FORWARD WL" value={summary.carryForward} />
 
       <div className="border-t border-white/10 pt-3"></div>
-      <SummaryRow label="THIS MONTH EARNING" value={summary.userProfit} />
+      <SummaryRow label="THIS WEEK EARNING" value={summary.userProfit} />
       <SummaryRow
         label="BROUGHT FORWARD COMM"
         value={summary.previousForwardComission}
@@ -201,14 +208,27 @@ function LeftSummary({ summary, user }) {
   );
 }
 
-function RightPanel({ summary, downlines, month, setMonth }) {
+function RightPanel({ summary, downlines, week, setWeek }) {
   return (
     <div className="md:col-span-2 rounded-xl bg-[#262833]/80 backdrop-blur border border-white/5 shadow-lg p-4">
       {/* FILTER */}
       <div className="sticky top-0 z-10 bg-[#262833]/90 backdrop-blur rounded-lg mb-4 p-3 flex flex-col sm:flex-row gap-2">
-        <MonthPicker month={month} setMonth={setMonth} />
+        <WeekPicker week={week} setWeek={setWeek} />
         <button
-          onClick={() => setMonth(new Date().toISOString().slice(0, 7))}
+          onClick={() => {
+            const now = new Date();
+            const start = new Date(now.getFullYear(), 0, 1);
+            const diff =
+              now -
+              start +
+              (start.getTimezoneOffset() - now.getTimezoneOffset()) * 60000;
+            const weekNum = Math.ceil(
+              (diff / 86400000 + start.getDay() + 1) / 7,
+            );
+            setWeek(
+              `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`,
+            );
+          }}
           className="bg-gradient-to-r from-teal-400 to-cyan-500 text-black px-4 py-2 rounded-lg font-semibold shadow"
         >
           RESET
@@ -360,7 +380,7 @@ function ErrorMessage({ text }) {
   );
 }
 
-function MonthPicker({ month, setMonth }) {
+function WeekPicker({ week, setWeek }) {
   const inputRef = useRef(null);
 
   return (
@@ -372,9 +392,9 @@ function MonthPicker({ month, setMonth }) {
     >
       <input
         ref={inputRef}
-        type="month"
-        value={month}
-        onChange={(e) => setMonth(e.target.value)}
+        type="week"
+        value={week}
+        onChange={(e) => setWeek(e.target.value)}
         className="bg-[#1b1d24] text-white px-3 py-2 pr-10 rounded-lg border border-white/10
                    focus:outline-none focus:ring-2 focus:ring-teal-400
                    appearance-none w-full cursor-pointer"
