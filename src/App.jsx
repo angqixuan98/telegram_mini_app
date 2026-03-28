@@ -12,13 +12,10 @@ export default function App() {
   const [error, setError] = useState("");
   const [week, setWeek] = useState(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const diff =
-      now -
-      start +
-      (start.getTimezoneOffset() - now.getTimezoneOffset()) * 60000;
-    const weekNum = Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
-    return `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+    const jan1 = new Date(now.getFullYear(), 0, 1);
+    const days = Math.floor((now - jan1) / 86400000);
+    const wk = Math.ceil((days + jan1.getDay() + 1) / 7);
+    return `${now.getFullYear()}-W${String(wk).padStart(2, "0")}`;
   });
 
   useEffect(() => {
@@ -217,17 +214,10 @@ function RightPanel({ summary, downlines, week, setWeek }) {
         <button
           onClick={() => {
             const now = new Date();
-            const start = new Date(now.getFullYear(), 0, 1);
-            const diff =
-              now -
-              start +
-              (start.getTimezoneOffset() - now.getTimezoneOffset()) * 60000;
-            const weekNum = Math.ceil(
-              (diff / 86400000 + start.getDay() + 1) / 7,
-            );
-            setWeek(
-              `${now.getFullYear()}-W${String(weekNum).padStart(2, "0")}`,
-            );
+            const jan1 = new Date(now.getFullYear(), 0, 1);
+            const days = Math.floor((now - jan1) / 86400000);
+            const wk = Math.ceil((days + jan1.getDay() + 1) / 7);
+            setWeek(`${now.getFullYear()}-W${String(wk).padStart(2, "0")}`);
           }}
           className="bg-gradient-to-r from-teal-400 to-cyan-500 text-black px-4 py-2 rounded-lg font-semibold shadow"
         >
