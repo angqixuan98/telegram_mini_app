@@ -4,30 +4,76 @@ const API_URL = import.meta.env.VITE_API_URL;
 const safe = (v) => Number(v) || 0;
 const fmt = (v) => safe(v).toFixed(2);
 
+function getCurrentWeek() {
+  const now = new Date();
+  const d = new Date(
+    Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
+  );
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const wk = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(wk).padStart(2, "0")}`;
+}
+
+function getCurrentMonth() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function App() {
   const params = new URLSearchParams(window.location.search);
   const uuid = params.get("token");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [week, setWeek] = useState(() => {
-    const now = new Date();
-    const jan1 = new Date(now.getFullYear(), 0, 1);
-    const days = Math.floor((now - jan1) / 86400000);
-    const wk = Math.ceil((days + jan1.getDay() + 1) / 7);
-    return `${now.getFullYear()}-W${String(wk).padStart(2, "0")}`;
-  });
+  const [commissionType, setCommissionType] = useState(null); // "weekly" or "monthly"
+  const [period, setPeriod] = useState(null);
+
+  // Fetch commission setting to determine type
+  useEffect(() => {
+    async function fetchSetting() {
+      try {
+        const res = await fetch(`${API_URL}/api/getCommissionSetting`, {
+          headers: {
+            Accept: "application/json",
+            code: import.meta.env.VITE_COM_CODE,
+            uuid: uuid,
+          },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        const type = json.data?.commission_type || "monthly";
+        setCommissionType(type);
+        setPeriod(type === "weekly" ? getCurrentWeek() : getCurrentMonth());
+      } catch {
+        // Default to monthly if setting fetch fails
+        setCommissionType("monthly");
+        setPeriod(getCurrentMonth());
+      }
+    }
+    fetchSetting();
+  }, []);
 
   useEffect(() => {
-    fetchCommission();
-  }, [week]);
+    if (period) fetchCommission();
+  }, [period]);
+
+  function handleResetPeriod() {
+    const target =
+      commissionType === "weekly" ? getCurrentWeek() : getCurrentMonth();
+    if (period === target) {
+      fetchCommission();
+    } else {
+      setPeriod(target);
+    }
+  }
 
   async function fetchCommission() {
     try {
       setLoading(true);
 
       const res = await fetch(
-        `${API_URL}/api/getUserCommissionReport/${week}`,
+        `${API_URL}/api/getUserCommissionReport/${encodeURIComponent(period)}`,
         {
           headers: {
             Accept: "application/json",
@@ -37,42 +83,73 @@ export default function App() {
         },
       );
 
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
 
       setData(json.data);
     } catch (err) {
       setError(err.message || "Failed to load");
+      setData(null);
     } finally {
       setLoading(false);
     }
   }
 
   if (loading) return <Loading />;
-  if (error) return <ErrorMessage text={error} />;
+  if (error)
+    return (
+      <ErrorMessage
+        text={error}
+        onRetry={() => {
+          setError("");
+          fetchCommission();
+        }}
+      />
+    );
 
-  return <CommissionUI data={data} week={week} setWeek={setWeek} />;
+  return (
+    <CommissionUI
+      data={data}
+      period={period}
+      setPeriod={setPeriod}
+      commissionType={commissionType}
+      onResetPeriod={handleResetPeriod}
+    />
+  );
 }
 
-function CommissionUI({ data, week, setWeek }) {
+function CommissionUI({
+  data,
+  period,
+  setPeriod,
+  commissionType,
+  onResetPeriod,
+}) {
   const { summary, downlines = [], user } = data;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1b1d24] to-[#111218] text-white p-3 sm:p-4">
       <div className=" mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-        <LeftSummary summary={summary} user={user} />
+        <LeftSummary
+          summary={summary}
+          user={user}
+          commissionType={commissionType}
+        />
         <RightPanel
           summary={summary}
           downlines={downlines}
-          week={week}
-          setWeek={setWeek}
+          period={period}
+          setPeriod={setPeriod}
+          commissionType={commissionType}
+          onResetPeriod={onResetPeriod}
         />
       </div>
     </div>
   );
 }
 
-function LeftSummary({ summary, user }) {
+function LeftSummary({ summary, user, commissionType }) {
   return (
     <div className="rounded-xl bg-[#262833]/80 backdrop-blur border border-white/5 shadow-lg p-4 space-y-3">
       <div className="flex items-center gap-3 border-b border-white/10 pb-3">
@@ -108,11 +185,15 @@ function LeftSummary({ summary, user }) {
       <SummaryRow label="BROUGHT FORWARD WL" value={summary.carryForward} />
 
       <div className="border-t border-white/10 pt-3"></div>
-      <SummaryRow label="THIS WEEK EARNING" value={summary.userProfit} />
       <SummaryRow
-        label="BROUGHT FORWARD COMM"
-        value={summary.previousForwardComission}
+        label={
+          commissionType === "weekly"
+            ? "THIS WEEK EARNING"
+            : "THIS MONTH EARNING"
+        }
+        value={summary.userProfit}
       />
+      <SummaryRow label="BROUGHT FORWARD COMM" value={summary.previousCarry} />
       <SummaryRow
         label="TOTAL EARNING"
         value={summary.totalEarn}
@@ -121,7 +202,7 @@ function LeftSummary({ summary, user }) {
 
       <div>
         <p className="text-xs text-gray-400 mb-2">COMMISSION RATE</p>
-        {summary.nextPercentage ? (
+        {summary.nextPercentage != null ? (
           <div className="grid grid-cols-2 gap-2">
             <TierBox
               title="CURRENT"
@@ -205,20 +286,25 @@ function LeftSummary({ summary, user }) {
   );
 }
 
-function RightPanel({ summary, downlines, week, setWeek }) {
+function RightPanel({
+  summary,
+  downlines,
+  period,
+  setPeriod,
+  commissionType,
+  onResetPeriod,
+}) {
   return (
     <div className="md:col-span-2 rounded-xl bg-[#262833]/80 backdrop-blur border border-white/5 shadow-lg p-4">
       {/* FILTER */}
       <div className="sticky top-0 z-10 bg-[#262833]/90 backdrop-blur rounded-lg mb-4 p-3 flex flex-col sm:flex-row gap-2">
-        <WeekPicker week={week} setWeek={setWeek} />
+        {commissionType === "weekly" ? (
+          <WeekPicker week={period} setWeek={setPeriod} />
+        ) : (
+          <MonthPicker month={period} setMonth={setPeriod} />
+        )}
         <button
-          onClick={() => {
-            const now = new Date();
-            const jan1 = new Date(now.getFullYear(), 0, 1);
-            const days = Math.floor((now - jan1) / 86400000);
-            const wk = Math.ceil((days + jan1.getDay() + 1) / 7);
-            setWeek(`${now.getFullYear()}-W${String(wk).padStart(2, "0")}`);
-          }}
+          onClick={onResetPeriod}
           className="bg-gradient-to-r from-teal-400 to-cyan-500 text-black px-4 py-2 rounded-lg font-semibold shadow"
         >
           RESET
@@ -362,10 +448,18 @@ function Loading() {
     </div>
   );
 }
-function ErrorMessage({ text }) {
+function ErrorMessage({ text, onRetry }) {
   return (
-    <div className="min-h-screen bg-[#111218] flex items-center justify-center">
+    <div className="min-h-screen bg-[#111218] flex flex-col items-center justify-center gap-4">
       <div className="bg-red-600 text-white px-4 py-2 rounded-lg">{text}</div>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="bg-white text-black px-4 py-2 rounded-lg font-semibold"
+        >
+          Retry
+        </button>
+      )}
     </div>
   );
 }
@@ -385,6 +479,45 @@ function WeekPicker({ week, setWeek }) {
         type="week"
         value={week}
         onChange={(e) => setWeek(e.target.value)}
+        className="bg-[#1b1d24] text-white px-3 py-2 pr-10 rounded-lg border border-white/10
+                   focus:outline-none focus:ring-2 focus:ring-teal-400
+                   appearance-none w-full cursor-pointer"
+      />
+
+      {/* White calendar icon */}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white pointer-events-none"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+        />
+      </svg>
+    </div>
+  );
+}
+
+function MonthPicker({ month, setMonth }) {
+  const inputRef = useRef(null);
+
+  return (
+    <div
+      className="relative cursor-pointer"
+      onClick={() =>
+        inputRef.current?.showPicker?.() || inputRef.current?.click()
+      }
+    >
+      <input
+        ref={inputRef}
+        type="month"
+        value={month}
+        onChange={(e) => setMonth(e.target.value)}
         className="bg-[#1b1d24] text-white px-3 py-2 pr-10 rounded-lg border border-white/10
                    focus:outline-none focus:ring-2 focus:ring-teal-400
                    appearance-none w-full cursor-pointer"
