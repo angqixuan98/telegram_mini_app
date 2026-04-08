@@ -36,7 +36,6 @@ export default function App() {
         const res = await fetch(`${API_URL}/api/getCommissionSetting`, {
           headers: {
             Accept: "application/json",
-            code: import.meta.env.VITE_COM_CODE,
             uuid: uuid,
           },
         });
